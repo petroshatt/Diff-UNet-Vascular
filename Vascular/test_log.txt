@@ -1,0 +1,60 @@
+nohup: ignoring input
+Searching for test images in: /data/pchatzi/Diff-UNet/Vascular/dataset/Dataset001_Vascular/imagesTs
+BasicUNet features: (64, 64, 128, 256, 512, 64).
+BasicUNet features: (64, 64, 128, 256, 512, 64).
+Loading weights from /data/pchatzi/Diff-UNet/Vascular/logs_vascular/diffusion_seg/model/best_model_0.7675.pt...
+You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+model parameters are loaded successed.
+Found 7 cases in test set.
+Starting Inference & Evaluation...
+
+Case: GCA_035
+  Abdominal    | Dice: 0.8789 | HD95: 1.00 | Recall: 0.9472
+  Aortic Arch  | Dice: 0.8297 | HD95: 2.45 | Recall: 0.9642
+  Ascending    | Dice: 0.7758 | HD95: 2.90 | Recall: 0.7534
+  Descending   | Dice: 0.9082 | HD95: 1.00 | Recall: 0.9111
+
+Case: GCA_036
+  Abdominal    | Dice: 0.2976 | HD95: 15.36 | Recall: 0.1975
+  Aortic Arch  | Dice: 0.7785 | HD95: 4.47 | Recall: 0.6968
+  Ascending    | Dice: 0.7738 | HD95: 3.32 | Recall: 0.7292
+  Descending   | Dice: 0.5388 | HD95: 14.27 | Recall: 0.4538
+
+Case: PMR_014
+  Abdominal    | Dice: 0.8268 | HD95: 2.00 | Recall: 0.8518
+  Aortic Arch  | Dice: 0.8129 | HD95: 3.00 | Recall: 0.7550
+  Ascending    | Dice: 0.7160 | HD95: 4.12 | Recall: 0.7290
+  Descending   | Dice: 0.8507 | HD95: 2.00 | Recall: 0.9009
+
+Case: PMR_015
+  Abdominal    | Dice: 0.6860 | HD95: 4.24 | Recall: 0.6017
+  Aortic Arch  | Dice: 0.8337 | HD95: 2.83 | Recall: 0.7415
+  Ascending    | Dice: 0.8224 | HD95: 2.83 | Recall: 0.9094
+  Descending   | Dice: 0.8758 | HD95: 1.41 | Recall: 0.9757
+
+Case: PMR_016
+  Abdominal    | Dice: 0.6714 | HD95: 2.24 | Recall: 0.6510
+  Aortic Arch  | Dice: 0.8336 | HD95: 2.24 | Recall: 0.9770
+  Ascending    | Dice: 0.7112 | HD95: 3.00 | Recall: 0.9669
+  Descending   | Dice: 0.8625 | HD95: 1.00 | Recall: 0.9014
+
+Case: PMR_017
+  Abdominal    | Dice: 0.8651 | HD95: 1.00 | Recall: 0.9266
+  Aortic Arch  | Dice: 0.6789 | HD95: 3.16 | Recall: 0.9463
+  Ascending    | Dice: 0.7183 | HD95: 5.00 | Recall: 0.8929
+  Descending   | Dice: 0.8575 | HD95: 1.41 | Recall: 0.9297
+
+Case: TA_006
+  Abdominal    | Dice: 0.7503 | HD95: 2.00 | Recall: 0.7665
+  Aortic Arch  | Dice: 0.8577 | HD95: 2.00 | Recall: 0.9353
+  Ascending    | Dice: 0.7789 | HD95: 2.24 | Recall: 0.9540
+  Descending   | Dice: 0.8019 | HD95: 2.00 | Recall: 0.8819
+
+============================================================
+CLASS           | DICE     | HD95     | RECALL  
+------------------------------------------------------------
+Abdominal       | 0.7108   | 3.98   | 0.7060
+Aortic Arch     | 0.8036   | 2.88   | 0.8594
+Ascending       | 0.7566   | 3.34   | 0.8478
+Descending      | 0.8137   | 3.30   | 0.8506
+============================================================
