@@ -20,6 +20,7 @@ from guided_diffusion.respace import SpacedDiffusion, space_timesteps
 from guided_diffusion.resample import UniformSampler
 import os
 import wandb
+import pynvml
 
 set_determinism(123)
 
@@ -30,8 +31,8 @@ os.makedirs(model_save_path, exist_ok=True)
 
 env = "pytorch" 
 max_epoch = 1000
-batch_size = 4
-val_every = 10
+batch_size = 2
+val_every = 20
 num_gpus = 1
 device = "cuda:0"
 
@@ -80,31 +81,42 @@ class VascularTrainer(Trainer):
     def __init__(self, env_type, max_epochs, batch_size, device="cpu", val_every=1, num_gpus=1, logdir="./logs/", master_ip='localhost', master_port=17750, training_script="train.py"):
         super().__init__(env_type, max_epochs, batch_size, device, val_every, num_gpus, logdir, master_ip, master_port, training_script)
         
-        wandb.init(project="Vascular_Diffusion_Seg", 
+        wandb.init(project="Diff-UNet-Vascular", 
                    name="diffusion_training", 
                    settings=wandb.Settings(_disable_stats=True, _disable_meta=True),
                    config={
                         "max_epochs": max_epochs,
                         "batch_size": batch_size,
                         "lr": 1e-4,
-                        "num_targets": number_targets
+                        "num_targets": number_targets,
+                        "ds_weights": [0.5, 0.25, 0.125, 0.0625]
                    })
 
         wandb.define_metric("Validation/*", step_metric="global_step")
         wandb.define_metric("Training/*", step_metric="global_step")
 
         self.window_infer = SlidingWindowInferer(roi_size=[96, 96, 96],
-                                        sw_batch_size=1,
-                                        overlap=0.25)
+                                                 sw_batch_size=1,
+                                                 overlap=0.25)
+
         self.model = DiffUNet()
-        self.best_mean_dice = 0.0
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4, weight_decay=1e-3)
-        self.mse = nn.MSELoss()
+
+        self.optimizer = torch.optim.AdamW(self.model.parameters(),
+                                           lr=1e-4,
+                                           weight_decay=1e-3)
+
         self.scheduler = LinearWarmupCosineAnnealingLR(self.optimizer,
-                                                    warmup_epochs=30,
-                                                    max_epochs=max_epochs)
+                                                       warmup_epochs=30,
+                                                       max_epochs=max_epochs)
+
         self.ce = nn.CrossEntropyLoss()
+        self.mse = nn.MSELoss()
         self.dice_loss = DiceLoss(softmax=True)
+
+        self.best_mean_dice = 0.0
+
+        self.ds_weights = [0.5, 0.25, 0.125, 0.0625]
+        self.ds_weights = [w / sum(self.ds_weights) for w in self.ds_weights]
 
     def training_step(self, batch):
         image, label = self.get_input(batch)
@@ -112,34 +124,39 @@ class VascularTrainer(Trainer):
         x_start = (label * 2) - 1
         
         x_t, t, noise = self.model(x=x_start, pred_type="q_sample")
-        pred_xstart = self.model(x=x_t, step=t, image=image, pred_type="denoise")
 
-        pred_01 = (pred_xstart + 1) / 2
+        multi_scale_preds = self.model(x=x_t, step=t, image=image, pred_type="denoise")
+        
+        total_loss = 0
 
-        loss_dice = self.dice_loss(pred_01, label)
-        
-        target_indices = torch.argmax(label, dim=1).long()
-        loss_ce = self.ce(pred_01, target_indices)
-        
-        loss_mse = self.mse(pred_01, label)
+        for i, pred_xstart in enumerate(multi_scale_preds):
+            pred_01 = (pred_xstart + 1) / 2
+            
+            if i > 0:
+                target = torch.nn.functional.interpolate(label, size=pred_01.shape[2:], mode='nearest')
+            else:
+                target = label
 
-        loss = loss_dice + loss_ce + loss_mse
-        
+            loss_dice = self.dice_loss(pred_01, target)
+            target_indices = torch.argmax(target, dim=1).long()
+            loss_ce = self.ce(pred_01, target_indices)
+            loss_mse = self.mse(pred_01, target)
+            
+            scale_loss = loss_dice + loss_ce + loss_mse
+            total_loss += self.ds_weights[i] * scale_loss
+
         with torch.no_grad():
-            train_dice_score = 1.0 - loss_dice.item()
+            train_dice_score = 1.0 - self.dice_loss((multi_scale_preds[0]+1)/2, label).item()
 
-        self.log("Training/total_loss", loss, step=self.global_step)
+        self.log("Training/total_loss", total_loss, step=self.global_step)
+        
         wandb.log({
-            "Training/total_loss": loss.item(),
-            "Training/dice_loss": loss_dice.item(),
+            "Training/total_loss": total_loss.item(),
             "Training/dice_score_overall": train_dice_score,
-            "Training/ce_loss": loss_ce.item(),
-            "Training/mse_loss": loss_mse.item(),
-            "Training/lr": self.optimizer.param_groups[0]['lr'],
             "global_step": self.global_step
         })
         
-        return loss
+        return total_loss
  
     def get_input(self, batch):
         image = batch["image"]
@@ -194,7 +211,7 @@ class VascularTrainer(Trainer):
         print(f"Mean Dice Score: {mean_dice:.4f} (Abdom: {d1:.4f}, Arch: {d2:.4f}, Asc: {d3:.4f}, Desc: {d4:.4f})")
 
 if __name__ == "__main__":
-    train_ds, val_ds, test_ds = get_loader_vascular(data_dir=data_dir, batch_size=batch_size, fold=0)
+    train_ds, val_ds, test_ds = get_loader_vascular(data_dir=data_dir, batch_size=batch_size, fold=0, num_workers=4)
     
     trainer = VascularTrainer(env_type=env,
                             max_epochs=max_epoch,

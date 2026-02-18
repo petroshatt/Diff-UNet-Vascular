@@ -316,6 +316,11 @@ class BasicUNetDe(nn.Module):
 
         self.final_conv = Conv["conv", spatial_dims](fea[5], out_channels, kernel_size=1)
 
+        # Deep Supervision Heads
+        self.ds_conv_4 = Conv["conv", spatial_dims](fea[3], out_channels, kernel_size=1)
+        self.ds_conv_3 = Conv["conv", spatial_dims](fea[2], out_channels, kernel_size=1)
+        self.ds_conv_2 = Conv["conv", spatial_dims](fea[1], out_channels, kernel_size=1)
+
     def forward(self, x: torch.Tensor, t, embeddings=None, image=None):
         """
         Args:
@@ -362,7 +367,13 @@ class BasicUNetDe(nn.Module):
         u1 = self.upcat_1(u2, x0, temb)
 
         logits = self.final_conv(u1)
+
+        if self.training:
+            return [
+                logits,              # Full resolution (u1)
+                self.ds_conv_2(u2),  # 1/2 resolution
+                self.ds_conv_3(u3),  # 1/4 resolution
+                self.ds_conv_4(u4)   # 1/8 resolution
+            ]
+        
         return logits
-
-
-

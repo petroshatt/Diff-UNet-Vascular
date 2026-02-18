@@ -175,6 +175,8 @@ if __name__ == "__main__":
             
             case_metrics, case_id = trainer.save_and_evaluate(batch, output, output_save_dir, i)
             all_metrics.append(case_metrics)
+
+            print(f"Inference Case: {case_id} ({i+1}/{len(test_ds)})")
             
             for idx, c_name in enumerate(classes):
                 d, hd, r = case_metrics[idx]
