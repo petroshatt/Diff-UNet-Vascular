@@ -2,6 +2,7 @@
 
 import numpy as np
 from dataset.vascular_data_utils_multi_label import get_loader_vascular
+from dataset.vascular_data_utils_single_modality import get_loader_vascular_single_modality
 import torch 
 import torch.nn as nn 
 from monai.inferers import SlidingWindowInferer
@@ -82,7 +83,7 @@ class VascularTrainer(Trainer):
         super().__init__(env_type, max_epochs, batch_size, device, val_every, num_gpus, logdir, master_ip, master_port, training_script)
         
         wandb.init(project="Diff-UNet-Vascular", 
-                   name="diffusion_training", 
+                   name="Diff-UNet (DS & PET Input Only)", 
                    settings=wandb.Settings(_disable_stats=True, _disable_meta=True),
                    config={
                         "max_epochs": max_epochs,
@@ -120,7 +121,7 @@ class VascularTrainer(Trainer):
 
     def training_step(self, batch):
         image, label = self.get_input(batch)
-        
+
         x_start = (label * 2) - 1
         
         x_t, t, noise = self.model(x=x_start, pred_type="q_sample")
@@ -214,13 +215,13 @@ if __name__ == "__main__":
     train_ds, val_ds, test_ds = get_loader_vascular(data_dir=data_dir, batch_size=batch_size, fold=0, num_workers=4)
     
     trainer = VascularTrainer(env_type=env,
-                            max_epochs=max_epoch,
-                            batch_size=batch_size,
-                            device=device,
-                            logdir=logdir,
-                            val_every=val_every,
-                            num_gpus=num_gpus,
-                            master_port=18899,
-                            training_script=__file__)
+                              max_epochs=max_epoch,
+                              batch_size=batch_size,
+                              device=device,
+                              logdir=logdir,
+                              val_every=val_every,
+                              num_gpus=num_gpus,
+                              master_port=18899,
+                              training_script=__file__)
 
     trainer.train(train_dataset=train_ds, val_dataset=val_ds)

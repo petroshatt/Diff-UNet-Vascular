@@ -144,3 +144,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+Vascular/train_log_gpu7.txt
+Vascular/train_log.txt
